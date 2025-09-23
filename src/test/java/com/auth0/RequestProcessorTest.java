@@ -498,7 +498,7 @@ public class RequestProcessorTest {
         assertThat(authorizeUrl, is(notNullValue()));
         assertThat(authorizeUrl, CoreMatchers.startsWith("https://me.auth0.com/authorize?"));
         assertThat(authorizeUrl, containsString("client_id=clientId"));
-        assertThat(authorizeUrl, containsString("redirect_uri=https%3A%2F%2Fredirect.uri%2Fhere")); // URL encoded
+        assertThat(authorizeUrl, containsString("redirect_uri=https://redirect.uri/here"));
         assertThat(authorizeUrl, containsString("response_type=code"));
         assertThat(authorizeUrl, containsString("scope=openid"));
         assertThat(authorizeUrl, containsString("state=state"));
@@ -567,7 +567,7 @@ public class RequestProcessorTest {
         assertThat(authorizeUrl, is(notNullValue()));
         assertThat(authorizeUrl, CoreMatchers.startsWith("https://me.auth0.com/authorize?"));
         assertThat(authorizeUrl, containsString("client_id=clientId"));
-        assertThat(authorizeUrl, containsString("redirect_uri=https%3A%2F%2Fredirect.uri%2Fhere"));
+        assertThat(authorizeUrl, containsString("redirect_uri=https://redirect.uri/here"));
         assertThat(authorizeUrl, containsString("response_type=id_token"));
         assertThat(authorizeUrl, containsString("scope=openid"));
         assertThat(authorizeUrl, containsString("state=state"));
@@ -586,7 +586,7 @@ public class RequestProcessorTest {
         assertThat(authorizeUrl, is(notNullValue()));
         assertThat(authorizeUrl, CoreMatchers.startsWith("https://me.auth0.com/authorize?"));
         assertThat(authorizeUrl, containsString("client_id=clientId"));
-        assertThat(authorizeUrl, containsString("redirect_uri=https%3A%2F%2Fredirect.uri%2Fhere"));
+        assertThat(authorizeUrl, containsString("redirect_uri=https://redirect.uri/here"));
         assertThat(authorizeUrl, containsString("response_type=token"));
         assertThat(authorizeUrl, containsString("scope=openid"));
         assertThat(authorizeUrl, containsString("state=state"));
