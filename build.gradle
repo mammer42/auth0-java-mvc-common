@@ -1,6 +1,6 @@
 buildscript {
     repositories {
-        jcenter()
+        mavenCentral()
     }
 
     dependencies {
@@ -80,35 +80,24 @@ project.afterEvaluate {
 //}
 
 ext {
-    //baselineCompareVersion = '1.5.0'
-    testInJavaVersions = [11, 17, 21]
+    testInJavaVersions = [17, 21]
+}
+
+jacoco {
+    toolVersion = "0.8.8"
 }
 
 jacocoTestReport {
     reports {
-        xml.enabled = true
-        html.enabled = true
+        xml.required = true
+        html.required = true
     }
 }
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(11)
+        languageVersion = JavaLanguageVersion.of(17)
     }
-    // Needed because of broken gradle metadata, see https://github.com/google/guava/issues/6612#issuecomment-1614992368
-    sourceSets.all {
-        configurations.getByName(runtimeClasspathConfigurationName) {
-            attributes.attribute(Attribute.of("org.gradle.jvm.environment", String), "standard-jvm")
-        }
-        configurations.getByName(compileClasspathConfigurationName) {
-            attributes.attribute(Attribute.of("org.gradle.jvm.environment", String), "standard-jvm")
-        }
-    }
-}
-
-compileJava {
-    sourceCompatibility '11'
-    targetCompatibility '11'
 }
 
 test {
@@ -120,7 +109,7 @@ test {
 }
 
 dependencies {
-    implementation 'jakarta.servlet:jakarta.servlet-api:5.0.0'
+    implementation 'jakarta.servlet:jakarta.servlet-api:6.1.0'
     implementation 'org.apache.commons:commons-lang3:3.12.0'
     implementation 'com.google.guava:guava-annotations:r03'
     implementation 'commons-codec:commons-codec:1.15'
