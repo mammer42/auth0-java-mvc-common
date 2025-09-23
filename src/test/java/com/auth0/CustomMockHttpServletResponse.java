@@ -8,7 +8,9 @@ import jakarta.servlet.http.HttpServletResponseWrapper;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.Charset;
 import java.util.*;
+import java.util.function.Supplier;
 
 public class CustomMockHttpServletResponse extends HttpServletResponseWrapper {
 
@@ -82,20 +84,12 @@ public class CustomMockHttpServletResponse extends HttpServletResponseWrapper {
         @Override public boolean containsHeader(String name) { return headers.containsKey(name); }
         @Override public String encodeURL(String url) { return url; }
         @Override public String encodeRedirectURL(String url) { return url; }
-
-        @Override
-        public String encodeUrl(String s) {
-            return "";
-        }
-
-        @Override
-        public String encodeRedirectUrl(String s) {
-            return "";
-        }
-
         @Override public void sendError(int sc, String msg) throws IOException { /* not implemented */ }
         @Override public void sendError(int sc) throws IOException { /* not implemented */ }
         @Override public void sendRedirect(String location) throws IOException { /* not implemented */ }
+        @Override public void sendRedirect(String location, boolean clearBuffer) throws IOException {/* not implemented */}
+        @Override public void sendRedirect(String location, int sc) throws IOException {/* not implemented */}
+        @Override public void sendRedirect(String location, int sc, boolean clearBuffer) throws IOException {/* not implemented */}
         @Override public void setDateHeader(String name, long date) { /* not implemented */ }
         @Override public void addDateHeader(String name, long date) { /* not implemented */ }
         @Override public void setHeader(String name, String value) { headers.computeIfAbsent(name, k -> new ArrayList<>()).add(value); } // Basic header setting
@@ -103,16 +97,18 @@ public class CustomMockHttpServletResponse extends HttpServletResponseWrapper {
         @Override public void setIntHeader(String name, int value) { /* not implemented */ }
         @Override public void addIntHeader(String name, int value) { /* not implemented */ }
         @Override public void setStatus(int sc) { this.status = sc; }
-        @Override public void setStatus(int sc, String sm) { this.status = sc; }
         @Override public int getStatus() { return status; }
         @Override public String getHeader(String name) { return headers.containsKey(name) ? headers.get(name).get(0) : null; } // Basic getHeader
         @Override public Collection<String> getHeaders(String name) { return headers.getOrDefault(name, Collections.emptyList()); }
         @Override public Collection<String> getHeaderNames() { return headers.keySet(); }
+        @Override public void setTrailerFields(Supplier<Map<String, String>> supplier) {/* not implemented */}
+        @Override public Supplier<Map<String, String>> getTrailerFields() {return null;}
         @Override public String getContentType() { return null; }
         @Override public String getCharacterEncoding() { return null; }
         @Override public ServletOutputStream getOutputStream() throws IOException { return null; }
         @Override public PrintWriter getWriter() throws IOException { return null; }
         @Override public void setCharacterEncoding(String charset) { /* not implemented */ }
+        @Override public void setCharacterEncoding(Charset encoding) {/* not implemented */}
         @Override public void setContentLength(int len) { /* not implemented */ }
         @Override public void setContentLengthLong(long len) { /* not implemented */ }
         @Override public void setContentType(String type) { /* not implemented */ }
