@@ -6,13 +6,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import javax.servlet.http.Cookie;
+import jakarta.servlet.http.Cookie;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.matchesPattern;
 
 public class TransientCookieStoreTest {
 
@@ -49,11 +51,9 @@ public class TransientCookieStoreTest {
         List<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(2));
 
-        String expectedEncodedState = URLEncoder.encode(stateVal, "UTF-8");
-        assertThat(headers, hasItem(
-                String.format("com.auth0.state=%s; HttpOnly; Max-Age=600; SameSite=None; Secure", expectedEncodedState)));
-        assertThat(headers, hasItem(
-                String.format("_com.auth0.state=%s; HttpOnly; Max-Age=600", expectedEncodedState)));
+        String expectedEncodedState = URLEncoder.encode(stateVal, StandardCharsets.UTF_8).replaceAll("\\+", "\\\\+");
+        assertThat(headers, hasItem(matchesPattern(String.format("com\\.auth0\\.state=%s; Max-Age=600; Expires=.*?; Secure; HttpOnly; SameSite=None", expectedEncodedState))));
+        assertThat(headers, hasItem(matchesPattern(String.format("_com\\.auth0\\.state=%s; Max-Age=600; Expires=.*?; HttpOnly", expectedEncodedState))));
     }
 
     @Test
@@ -63,8 +63,8 @@ public class TransientCookieStoreTest {
         List<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(2));
 
-        assertThat(headers, hasItem("com.auth0.state=123456; HttpOnly; Max-Age=600; SameSite=None; Secure"));
-        assertThat(headers, hasItem("_com.auth0.state=123456; HttpOnly; Max-Age=600"));
+        assertThat(headers, hasItem(matchesPattern("com\\.auth0\\.state=123456; Max-Age=600; Expires=.*?; Secure; HttpOnly; SameSite=None")));
+        assertThat(headers, hasItem(matchesPattern("_com\\.auth0\\.state=123456; Max-Age=600; Expires=.*?; HttpOnly")));
     }
 
     @Test
@@ -74,8 +74,7 @@ public class TransientCookieStoreTest {
         List<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
 
-        assertThat(headers, hasItem("com.auth0.state=123456; HttpOnly; Max-Age=600; SameSite=None; Secure"));
-    }
+        assertThat(headers, hasItem(matchesPattern("com\\.auth0\\.state=123456; Max-Age=600; Expires=.*?; Secure; HttpOnly; SameSite=None")));    }
 
     @Test
     public void shouldSetSecureCookieWhenSameSiteLaxAndConfigured() {
@@ -84,8 +83,7 @@ public class TransientCookieStoreTest {
         List<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
 
-        assertThat(headers, hasItem("com.auth0.state=123456; HttpOnly; Max-Age=600; SameSite=Lax; Secure"));
-    }
+        assertThat(headers, hasItem(matchesPattern("com\\.auth0\\.state=123456; Max-Age=600; Expires=.*?; Secure; HttpOnly; SameSite=Lax")));    }
 
     @Test
     public void shouldSetSecureFallbackCookieWhenSameSiteNoneAndConfigured() {
@@ -94,8 +92,8 @@ public class TransientCookieStoreTest {
         List<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(2));
 
-        assertThat(headers, hasItem("com.auth0.state=123456; HttpOnly; Max-Age=600; SameSite=None; Secure"));
-        assertThat(headers, hasItem("_com.auth0.state=123456; HttpOnly; Max-Age=600; Secure"));
+        assertThat(headers, hasItem(matchesPattern("com\\.auth0\\.state=123456; Max-Age=600; Expires=.*?; Secure; HttpOnly; SameSite=None")));
+        assertThat(headers, hasItem(matchesPattern("_com\\.auth0\\.state=123456; Max-Age=600; Expires=.*?; Secure; HttpOnly")));
     }
 
     @Test
@@ -105,7 +103,7 @@ public class TransientCookieStoreTest {
         List<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
 
-        assertThat(headers, hasItem("com.auth0.state=123456; HttpOnly; Max-Age=600; SameSite=Lax"));
+        assertThat(headers, hasItem(matchesPattern("com\\.auth0\\.state=123456; Max-Age=600; Expires=.*?; HttpOnly; SameSite=Lax")));
     }
 
     @Test
@@ -115,8 +113,8 @@ public class TransientCookieStoreTest {
         List<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(2));
 
-        assertThat(headers, hasItem("com.auth0.nonce=123456; HttpOnly; Max-Age=600; SameSite=None; Secure"));
-        assertThat(headers, hasItem("_com.auth0.nonce=123456; HttpOnly; Max-Age=600"));
+        assertThat(headers, hasItem(matchesPattern("com\\.auth0\\.nonce=123456; Max-Age=600; Expires=.*?; Secure; HttpOnly; SameSite=None")));
+        assertThat(headers, hasItem(matchesPattern("_com\\.auth0\\.nonce=123456; Max-Age=600; Expires=.*?; HttpOnly")));
     }
 
     @Test
@@ -126,8 +124,7 @@ public class TransientCookieStoreTest {
         List<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
 
-        assertThat(headers, hasItem("com.auth0.nonce=123456; HttpOnly; Max-Age=600; SameSite=None; Secure"));
-    }
+        assertThat(headers, hasItem(matchesPattern("com\\.auth0\\.nonce=123456; Max-Age=600; Expires=.*?; Secure; HttpOnly; SameSite=None")));    }
 
     @Test
     public void shouldRemoveStateSameSiteCookieAndFallbackCookie() {

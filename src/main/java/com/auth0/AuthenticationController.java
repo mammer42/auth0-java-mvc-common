@@ -1,14 +1,14 @@
 package com.auth0;
 
-import com.auth0.client.HttpOptions;
 import com.auth0.client.auth.AuthAPI;
 import com.auth0.jwk.JwkProvider;
-import com.auth0.net.Telemetry;
+import com.auth0.net.client.Auth0HttpClient;
+import com.auth0.net.client.DefaultHttpClient;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.Validate;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 
 /**
@@ -61,7 +61,6 @@ public class AuthenticationController {
         private boolean useLegacySameSiteCookie;
         private String organization;
         private String invitation;
-        private HttpOptions httpOptions;
         private String cookiePath;
 
         Builder(String domain, String clientId, String clientSecret) {
@@ -74,18 +73,6 @@ public class AuthenticationController {
             this.clientSecret = clientSecret;
             this.responseType = RESPONSE_TYPE_CODE;
             this.useLegacySameSiteCookie = true;
-        }
-
-        /**
-         * Customize certain aspects of the underlying HTTP client networking library, such as timeouts and proxy configuration.
-         *
-         * @param httpOptions a non-null {@code HttpOptions}
-         * @return this same builder instance.
-         */
-        public Builder withHttpOptions(HttpOptions httpOptions) {
-            Validate.notNull(httpOptions);
-            this.httpOptions = httpOptions;
-            return this;
         }
 
         /**
@@ -196,8 +183,7 @@ public class AuthenticationController {
          * @throws UnsupportedOperationException if the Implicit Grant is chosen and the environment doesn't support UTF-8 encoding.
          */
         public AuthenticationController build() throws UnsupportedOperationException {
-            AuthAPI apiClient = createAPIClient(domain, clientId, clientSecret, httpOptions);
-            setupTelemetry(apiClient);
+            AuthAPI apiClient = createAPIClient(domain, clientId, clientSecret);
 
             final boolean expectedAlgorithmIsExplicitlySetAndAsymmetric = jwkProvider != null;
             final SignatureVerifier signatureVerifier;
@@ -234,17 +220,15 @@ public class AuthenticationController {
         }
 
         @VisibleForTesting
-        AuthAPI createAPIClient(String domain, String clientId, String clientSecret, HttpOptions httpOptions) {
-            if (httpOptions != null) {
-                return new AuthAPI(domain, clientId, clientSecret, httpOptions);
-            }
-            return new AuthAPI(domain, clientId, clientSecret);
-        }
+        AuthAPI createAPIClient(String domain, String clientId, String clientSecret) {
+            Auth0HttpClient http = DefaultHttpClient.newBuilder()
+                    .telemetryEnabled(true)
+                    .build();
 
-        @VisibleForTesting
-        void setupTelemetry(AuthAPI client) {
-            Telemetry telemetry = new Telemetry("auth0-java-mvc-common", obtainPackageVersion());
-            client.setTelemetry(telemetry);
+
+            return AuthAPI.newBuilder(domain, clientId, clientSecret)
+                    .withHttpClient(http)
+                    .build();
         }
 
         @VisibleForTesting
@@ -263,23 +247,6 @@ public class AuthenticationController {
             }
             return domain;
         }
-    }
-
-    /**
-     * Whether to enable or not the HTTP Logger for every Request and Response.
-     * Enabling this can expose sensitive information.
-     *
-     * @param enabled whether to enable the HTTP logger or not.
-     */
-    public void setLoggingEnabled(boolean enabled) {
-        requestProcessor.getClient().setLoggingEnabled(enabled);
-    }
-
-    /**
-     * Disable sending the Telemetry header on every request to the Auth0 API
-     */
-    public void doNotSendTelemetry() {
-        requestProcessor.getClient().doNotSendTelemetry();
     }
 
     /**
@@ -317,7 +284,7 @@ public class AuthenticationController {
      * when building the {@link AuthorizeUrl} that the user will be redirected to to login. Failure to do so may result
      * in a broken login experience for the user.</p>
      *
-     * @deprecated This method uses the {@link javax.servlet.http.HttpSession} for auth-based data, and is incompatible
+     * @deprecated This method uses the {@link jakarta.servlet.http.HttpSession} for auth-based data, and is incompatible
      * with clients that are using the "id_token" or "token" responseType with browsers that enforce SameSite cookie
      * restrictions. This method will be removed in version 2.0.0. Use
      * {@link AuthenticationController#handle(HttpServletRequest, HttpServletResponse)} instead.
@@ -341,7 +308,7 @@ public class AuthenticationController {
      * {@link AuthenticationController#handle(HttpServletRequest)} method. Failure to do so may result in a broken login
      * experience for users.</p>
      *
-     * @deprecated This method stores data in the {@link javax.servlet.http.HttpSession}, and is incompatible with clients
+     * @deprecated This method stores data in the {@link jakarta.servlet.http.HttpSession}, and is incompatible with clients
      * that are using the "id_token" or "token" responseType with browsers that enforce SameSite cookie restrictions.
      * This method will be removed in version 2.0.0. Use
      * {@link AuthenticationController#buildAuthorizeUrl(HttpServletRequest, HttpServletResponse, String)} instead.

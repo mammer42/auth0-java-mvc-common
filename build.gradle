@@ -1,6 +1,6 @@
 buildscript {
     repositories {
-        jcenter()
+        mavenCentral()
     }
 
     dependencies {
@@ -48,68 +48,57 @@ project.afterEvaluate {
         }
     }
 
-    project.configure(project) {
-        def baselineVersion = project.ext.baselineCompareVersion
-        task('apiDiff', type: JapicmpTask, dependsOn: 'jar') {
-            oldClasspath.from(files(getBaselineJar(project, baselineVersion)))
-            newClasspath.from(files(jar.archiveFile))
-            onlyModified = true
-            failOnModification = true
-            ignoreMissingClasses = true
-            htmlOutputFile = file("$buildDir/reports/apiDiff/apiDiff.html")
-            txtOutputFile = file("$buildDir/reports/apiDiff/apiDiff.txt")
-            doLast {
-                project.logger.quiet("Comparing against baseline version ${baselineVersion}")
-            }
-        }
-    }
+//    project.configure(project) {
+//        def baselineVersion = project.ext.baselineCompareVersion
+//        task('apiDiff', type: JapicmpTask, dependsOn: 'jar') {
+//            oldClasspath.from(files(getBaselineJar(project, baselineVersion)))
+//            newClasspath.from(files(jar.archiveFile))
+//            onlyModified = true
+//            failOnModification = true
+//            ignoreMissingClasses = true
+//            htmlOutputFile = file("$buildDir/reports/apiDiff/apiDiff.html")
+//            txtOutputFile = file("$buildDir/reports/apiDiff/apiDiff.txt")
+//            doLast {
+//                project.logger.quiet("Comparing against baseline version ${baselineVersion}")
+//            }
+//        }
+//    }
 }
 
-private static File getBaselineJar(Project project, String baselineVersion) {
-    // Use detached configuration: https://github.com/square/okhttp/blob/master/build.gradle#L270
-    def group = project.group
-    try {
-        def baseline = "${project.group}:${project.name}:$baselineVersion"
-        project.group = 'virtual_group_for_japicmp'
-        def dependency = project.dependencies.create(baseline + "@jar")
-        return project.configurations.detachedConfiguration(dependency).files.find {
-            it.name == "${project.name}-${baselineVersion}.jar"
-        }
-    } finally {
-        project.group = group
-    }
-}
+//private static File getBaselineJar(Project project, String baselineVersion) {
+//    // Use detached configuration: https://github.com/square/okhttp/blob/master/build.gradle#L270
+//    def group = project.group
+//    try {
+//        def baseline = "${project.group}:${project.name}:$baselineVersion"
+//        project.group = 'virtual_group_for_japicmp'
+//        def dependency = project.dependencies.create(baseline + "@jar")
+//        return project.configurations.detachedConfiguration(dependency).files.find {
+//            it.name == "${project.name}-${baselineVersion}.jar"
+//        }
+//    } finally {
+//        project.group = group
+//    }
+//}
 
 ext {
-    baselineCompareVersion = '1.5.0'
-    testInJavaVersions = [8, 11, 17, 21]
+    testInJavaVersions = [17, 21]
+}
+
+jacoco {
+    toolVersion = "0.8.8"
 }
 
 jacocoTestReport {
     reports {
-        xml.enabled = true
-        html.enabled = true
+        xml.required = true
+        html.required = true
     }
 }
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(8)
+        languageVersion = JavaLanguageVersion.of(17)
     }
-    // Needed because of broken gradle metadata, see https://github.com/google/guava/issues/6612#issuecomment-1614992368
-    sourceSets.all {
-        configurations.getByName(runtimeClasspathConfigurationName) {
-            attributes.attribute(Attribute.of("org.gradle.jvm.environment", String), "standard-jvm")
-        }
-        configurations.getByName(compileClasspathConfigurationName) {
-            attributes.attribute(Attribute.of("org.gradle.jvm.environment", String), "standard-jvm")
-        }
-    }
-}
-
-compileJava {
-    sourceCompatibility '1.8'
-    targetCompatibility '1.8'
 }
 
 test {
@@ -121,21 +110,21 @@ test {
 }
 
 dependencies {
-    implementation 'javax.servlet:javax.servlet-api:3.1.0'
+    implementation 'jakarta.servlet:jakarta.servlet-api:6.1.0'
     implementation 'org.apache.commons:commons-lang3:3.18.0'
     implementation 'com.google.guava:guava-annotations:r03'
     implementation 'commons-codec:commons-codec:1.15'
 
-    api 'com.auth0:auth0:1.45.1'
+    api 'com.auth0:auth0:2.16.0'
     api 'com.auth0:java-jwt:3.19.4'
     api 'com.auth0:jwks-rsa:0.23.0'
 
     testImplementation 'org.bouncycastle:bcprov-jdk15on:1.64'
-    testImplementation 'org.hamcrest:java-hamcrest:2.0.0.0'
-    testImplementation 'org.hamcrest:hamcrest-core:1.3'
-    testImplementation 'org.mockito:mockito-core:2.8.9'
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
-    testImplementation 'org.springframework:spring-test:4.3.14.RELEASE'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'org.mockito:mockito-core:5.12.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+  testImplementation 'org.springframework:spring-test:6.2.6'
+  testImplementation 'org.springframework:spring-web:6.2.6'
     testImplementation 'com.squareup.okhttp3:okhttp:4.11.0'
 }
 

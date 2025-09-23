@@ -4,7 +4,7 @@ def getVersionFromFile() {
 }
 
 def isSnapshot() {
-    return hasProperty('isSnapshot') ? isSnapshot.toBoolean() : true
+    return hasProperty('isSnapshot') ? isSnapshot.toBoolean() : false
 }
 
 def getVersionName() {

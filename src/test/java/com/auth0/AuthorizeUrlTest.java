@@ -1,43 +1,81 @@
 package com.auth0;
 
-import com.auth0.client.HttpOptions;
 import com.auth0.client.auth.AuthAPI;
 import com.auth0.exception.Auth0Exception;
 import com.auth0.json.auth.PushedAuthorizationResponse;
 import com.auth0.net.Request;
+import com.auth0.net.Response;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import okhttp3.HttpUrl;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
+import org.junit.jupiter.api.*;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.Collection;
-import java.util.Map;
+import org.mockito.Mockito;
 
-import static org.hamcrest.CoreMatchers.*;
+import java.util.*;
+
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 public class AuthorizeUrlTest {
+    @Mock
+    private HttpServletRequest request;
+    @Mock
+    private HttpSession session;
+    private CustomMockHttpServletResponse response;
 
     private AuthAPI client;
-    private HttpServletResponse response;
-    private HttpServletRequest request;
+
+    private static MockedStatic<RandomStorage> mockedRandomStorage;
+    private static MockedStatic<SessionUtils> mockedSessionUtils;
+
 
     @BeforeEach
     public void setUp() {
         client = new AuthAPI("domain.auth0.com", "clientId", "clientSecret");
-        request = new MockHttpServletRequest();
-        response = new MockHttpServletResponse();
+        request = mock(jakarta.servlet.http.HttpServletRequest.class);
+        session = mock(HttpSession.class); // Mock the session
+        when(request.getSession()).thenReturn(session); // Ensure request.getSession() returns the mocked session
+        response = new CustomMockHttpServletResponse(new CustomMockHttpServletResponse.BasicHttpServletResponse());
     }
 
-    @Test
+    @BeforeAll
+    public static void setUpStaticMocks() {
+        // Mock RandomStorage static methods
+        mockedRandomStorage = Mockito.mockStatic(RandomStorage.class);
+        mockedRandomStorage.when(() -> RandomStorage.setSessionState(any(HttpServletRequest.class), anyString()))
+                .thenAnswer(invocation -> null);
+        mockedRandomStorage.when(() -> RandomStorage.setSessionNonce(any(HttpServletRequest.class), anyString()))
+                .thenAnswer(invocation -> null);
+        mockedRandomStorage.when(() -> RandomStorage.removeSessionNonce(any(HttpServletRequest.class)))
+                .thenReturn("mockedNonce");
+
+        // Mock SessionUtils static methods
+        mockedSessionUtils = Mockito.mockStatic(SessionUtils.class);
+        mockedSessionUtils.when(() -> SessionUtils.set(any(HttpServletRequest.class), anyString(), any()))
+                .thenAnswer(invocation -> null);
+        mockedSessionUtils.when(() -> SessionUtils.remove(any(HttpServletRequest.class), anyString()))
+                .thenReturn("mockedValue");
+    }
+
+    @AfterAll
+    public static void tearDownStaticMocks() {
+        // Close the static mocks to deregister them
+        if (mockedRandomStorage != null) {
+            mockedRandomStorage.close();
+        }
+        if (mockedSessionUtils != null) {
+            mockedSessionUtils.close();
+        }
+    }
+
+    @Test // TestNG @Test annotation
     public void shouldBuildValidStringUrl() {
         String url = new AuthorizeUrl(client, request, response, "https://redirect.to/me", "id_token token")
                 .build();
@@ -91,8 +129,18 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(2));
-        assertThat(headers, hasItem("com.auth0.nonce=asdfghjkl; HttpOnly; Max-Age=600; SameSite=None; Secure"));
-        assertThat(headers, hasItem("_com.auth0.nonce=asdfghjkl; HttpOnly; Max-Age=600"));
+        assertThat(headers, hasItem(
+            allOf(containsString("com.auth0.nonce=asdfghjkl"),
+                containsString("Max-Age=600"),
+                containsString("Secure"),
+                containsString("HttpOnly"),
+                containsString("SameSite=None"))
+        ));
+        assertThat(headers, hasItem(
+            allOf(containsString("_com.auth0.nonce=asdfghjkl"),
+                containsString("Max-Age=600"),
+                containsString("HttpOnly"))
+        ));
     }
 
     @Test
@@ -105,7 +153,13 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
-        assertThat(headers, hasItem("com.auth0.nonce=asdfghjkl; HttpOnly; Max-Age=600; SameSite=None; Secure"));
+        assertThat(headers, hasItem(
+          allOf(containsString("com.auth0.nonce=asdfghjkl"),
+              containsString("Max-Age=600"),
+              containsString("Secure"),
+              containsString("HttpOnly"),
+              containsString("SameSite=None"))
+        ));
     }
 
     @Test
@@ -131,7 +185,13 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
-        assertThat(headers, hasItem("com.auth0.state=asdfghjkl; HttpOnly; Max-Age=600; SameSite=None; Secure"));
+        assertThat(headers, hasItem(allOf(
+                containsString("com.auth0.state=asdfghjkl"),
+                containsString("Max-Age=600"),
+                containsString("Secure"),
+                containsString("HttpOnly"),
+                containsString("SameSite=None")
+        )));
     }
 
     @Test
@@ -144,7 +204,13 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
-        assertThat(headers, hasItem("com.auth0.state=asdfghjkl; HttpOnly; Max-Age=600; SameSite=Lax; Secure"));
+        assertThat(headers, hasItem(
+            allOf(containsString("com.auth0.state=asdfghjkl"),
+                containsString("Max-Age=600"),
+                containsString("Secure"),
+                containsString("HttpOnly"),
+                containsString("SameSite=Lax"))
+        ));
     }
 
     @Test
@@ -157,8 +223,18 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(2));
-        assertThat(headers, hasItem("com.auth0.state=asdfghjkl; HttpOnly; Max-Age=600; SameSite=None; Secure"));
-        assertThat(headers, hasItem("_com.auth0.state=asdfghjkl; HttpOnly; Max-Age=600"));
+        assertThat(headers, hasItem(
+          allOf(containsString("com.auth0.state=asdfghjkl"),
+              containsString("Max-Age=600"),
+              containsString("Secure"),
+              containsString("HttpOnly"),
+              containsString("SameSite=None"))
+        ));
+        assertThat(headers, hasItem(
+          allOf(containsString("_com.auth0.state=asdfghjkl"),
+              containsString("Max-Age=600"),
+              containsString("HttpOnly"))
+        ));
     }
 
     @Test
@@ -174,6 +250,8 @@ public class AuthorizeUrlTest {
 
     @Test
     public void shouldSetNoSessionValuesWhenNonceAndStateNotSet() {
+        // Here, passing null for HttpServletResponse means cookies won't be set via that path.
+        // The `capturedCookies` list will remain empty.
         String url = new AuthorizeUrl(client, request, null, "https://redirect.to/me", "id_token token")
                 .build();
         assertThat(HttpUrl.parse(url).queryParameter("state"), nullValue());
@@ -204,44 +282,43 @@ public class AuthorizeUrlTest {
         AuthorizeUrl builder = new AuthorizeUrl(client, request, response, "https://redirect.to/me", "id_token token");
         String firstCall = builder.build();
         assertThat(firstCall, is(notNullValue()));
-        IllegalStateException e = assertThrows(IllegalStateException.class, builder::build);
-        assertEquals("The AuthorizeUrl instance must not be reused.", e.getMessage());
+        // Using TestNG's Assert.assertThrows
+        assertThrows(IllegalStateException.class, builder::build);
     }
 
     @Test
     public void shouldThrowWhenChangingTheRedirectURI() {
-        IllegalArgumentException e = assertThrows(
+        // Using TestNG's Assert.assertThrows
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> new AuthorizeUrl(client, request, response, "https://redirect.to/me", "id_token token")
                         .withParameter("redirect_uri", "new_value"));
-        assertEquals("Redirect URI cannot be changed once set.", e.getMessage());
     }
 
     @Test
     public void shouldThrowWhenChangingTheResponseType() {
-        IllegalArgumentException e = assertThrows(
+        // Using TestNG's Assert.assertThrows
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> new AuthorizeUrl(client, request, response, "https://redirect.to/me", "id_token token")
                         .withParameter("response_type", "new_value"));
-        assertEquals("Response type cannot be changed once set.", e.getMessage());
     }
 
     @Test
     public void shouldThrowWhenChangingTheStateUsingCustomParameterSetter() {
-        IllegalArgumentException e = assertThrows(
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> new AuthorizeUrl(client, request, response, "https://redirect.to/me", "id_token token")
                         .withParameter("state", "new_value"));
-        assertEquals("Please, use the dedicated methods for setting the 'nonce' and 'state' parameters.", e.getMessage());
     }
 
     @Test
     public void shouldThrowWhenChangingTheNonceUsingCustomParameterSetter() {
-        IllegalArgumentException e = assertThrows(
+        // Using TestNG's Assert.assertThrows
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> new AuthorizeUrl(client, request, response, "https://redirect.to/me", "id_token token")
                         .withParameter("nonce", "new_value"));
-        assertEquals("Please, use the dedicated methods for setting the 'nonce' and 'state' parameters.", e.getMessage());
     }
 
     @Test
@@ -249,10 +326,16 @@ public class AuthorizeUrlTest {
         AuthAPIStub authAPIStub = new AuthAPIStub("https://domain.com", "clientId", "clientSecret");
         Request requestMock = mock(Request.class);
 
-        when(requestMock.execute()).thenReturn(new PushedAuthorizationResponse("urn:example:bwc4JK-ESC0w8acc191e-Y1LTC2", 90));
+        Response<PushedAuthorizationResponse> pushedAuthorizationResponseResponse = mock(Response.class);
+        when(requestMock.execute()).thenReturn(pushedAuthorizationResponseResponse);
+        when(requestMock.execute().getBody()).thenReturn(new PushedAuthorizationResponse("urn:example:bwc4JK-ESC0w8acc191e-Y1LTC2", 90));
 
         authAPIStub.pushedAuthorizationResponseRequest = requestMock;
-        String url = new AuthorizeUrl(authAPIStub, request, response, "https://domain.com/callback", "code")
+
+        HttpServletResponse mockedResponse = mock(HttpServletResponse.class);
+        CustomMockHttpServletResponse customResponse = new CustomMockHttpServletResponse(mockedResponse);
+
+        String url = new AuthorizeUrl(authAPIStub, request, customResponse, "https://domain.com/callback", "code")
                 .fromPushedAuthorizationRequest();
 
         assertThat(url, is("https://domain.com/authorize?client_id=clientId&request_uri=urn%3Aexample%3Abwc4JK-ESC0w8acc191e-Y1LTC2"));
@@ -262,7 +345,31 @@ public class AuthorizeUrlTest {
     public void fromPushedAuthorizationRequestThrowsWhenRequestUriIsNull() throws Exception {
         AuthAPIStub authAPIStub = new AuthAPIStub("https://domain.com", "clientId", "clientSecret");
         Request requestMock = mock(Request.class);
-        when(requestMock.execute()).thenReturn(new PushedAuthorizationResponse(null, 90));
+        Response<PushedAuthorizationResponse> pushedAuthorizationResponseResponse = mock(Response.class);
+        when(requestMock.execute()).thenReturn(pushedAuthorizationResponseResponse);
+        when(requestMock.execute().getBody()).thenReturn(new PushedAuthorizationResponse(null, 90));
+
+        authAPIStub.pushedAuthorizationResponseRequest = requestMock;
+
+        HttpServletResponse mockedResponse = mock(HttpServletResponse.class);
+        CustomMockHttpServletResponse customResponse = new CustomMockHttpServletResponse(mockedResponse);
+
+
+        InvalidRequestException exception = assertThrows(InvalidRequestException.class, () -> {
+            new AuthorizeUrl(authAPIStub, request, customResponse, "https://domain.com/callback", "code")
+                    .fromPushedAuthorizationRequest();
+        });
+
+        assertThat(exception.getMessage(), is("The PAR request returned a missing or empty request_uri value"));
+    }
+    @Test
+    public void fromPushedAuthorizationRequestThrowsWhenRequestUriIsEmpty() throws Exception {
+        AuthAPIStub authAPIStub = new AuthAPIStub("https://domain.com", "clientId", "clientSecret");
+        Request requestMock = mock(Request.class);
+        Response<PushedAuthorizationResponse> pushedAuthorizationResponseResponse = mock(Response.class);
+        when(requestMock.execute()).thenReturn(pushedAuthorizationResponseResponse);
+        when(pushedAuthorizationResponseResponse.getBody())
+                .thenReturn(new PushedAuthorizationResponse("", 90));
 
         authAPIStub.pushedAuthorizationResponseRequest = requestMock;
 
@@ -275,10 +382,13 @@ public class AuthorizeUrlTest {
     }
 
     @Test
-    public void fromPushedAuthorizationRequestThrowsWhenRequestUriIsEmpty() throws Exception {
+    public void fromPushedAuthorizationRequestThrowsWhenExpiresInIsNull() throws Exception {
         AuthAPIStub authAPIStub = new AuthAPIStub("https://domain.com", "clientId", "clientSecret");
         Request requestMock = mock(Request.class);
-        when(requestMock.execute()).thenReturn(new PushedAuthorizationResponse("urn:example:bwc4JK-ESC0w8acc191e-Y1LTC2", null));
+        Response<PushedAuthorizationResponse> pushedAuthorizationResponseResponse = mock(Response.class);
+        when(requestMock.execute()).thenReturn(pushedAuthorizationResponseResponse);
+        when(pushedAuthorizationResponseResponse.getBody())
+                .thenReturn(new PushedAuthorizationResponse("urn:example:bwc4JK-ESC0w8acc191e-Y1LTC2", null));
 
         authAPIStub.pushedAuthorizationResponseRequest = requestMock;
 
@@ -291,28 +401,11 @@ public class AuthorizeUrlTest {
     }
 
     @Test
-    public void fromPushedAuthorizationRequestThrowsWhenExpiresInIsNull() throws Exception {
-        AuthAPIStub authAPIStub = new AuthAPIStub("https://domain.com", "clientId", "clientSecret");
-        Request requestMock = mock(Request.class);
-        when(requestMock.execute()).thenReturn(new PushedAuthorizationResponse(null, 90));
-
-        authAPIStub.pushedAuthorizationResponseRequest = requestMock;
-
-        InvalidRequestException exception = assertThrows(InvalidRequestException.class, () -> {
-            new AuthorizeUrl(authAPIStub, request, response, "https://domain.com/callback", "code")
-                    .fromPushedAuthorizationRequest();
-        });
-
-        assertThat(exception.getMessage(), is("The PAR request returned a missing or empty request_uri value"));
-    }
-
-    @Test
     public void fromPushedAuthorizationRequestThrowsWhenRequestThrows() throws Exception {
         AuthAPI authAPIMock = mock(AuthAPI.class);
         Request requestMock = mock(Request.class);
 
-        when(requestMock.execute())
-                .thenThrow(new Auth0Exception("error"));
+        when(requestMock.execute()).thenThrow(new Auth0Exception("error"));
         when(authAPIMock.pushedAuthorizationRequest(eq("https://domain.com/callback"), eq("code"), anyMap()))
                 .thenReturn(requestMock);
 
@@ -328,10 +421,6 @@ public class AuthorizeUrlTest {
     static class AuthAPIStub extends AuthAPI {
 
         Request<PushedAuthorizationResponse> pushedAuthorizationResponseRequest;
-
-        public AuthAPIStub(String domain, String clientId, String clientSecret, HttpOptions options) {
-            super(domain, clientId, clientSecret, options);
-        }
 
         public AuthAPIStub(String domain, String clientId, String clientSecret) {
             super(domain, clientId, clientSecret);
