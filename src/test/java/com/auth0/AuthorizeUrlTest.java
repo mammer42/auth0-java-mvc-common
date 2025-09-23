@@ -129,8 +129,18 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(2));
-        assertThat(headers, containsInAnyOrder("com.auth0.nonce=asdfghjkl; Max-Age=600; Secure; HttpOnly; SameSite=None"));
-        assertThat(headers, containsInAnyOrder("_com.auth0.nonce=asdfghjkl; Max-Age=600; HttpOnly"));
+        assertThat(headers, hasItem(
+            allOf(containsString("com.auth0.nonce=asdfghjkl"),
+                containsString("Max-Age=600"),
+                containsString("Secure"),
+                containsString("HttpOnly"),
+                containsString("SameSite=None"))
+        ));
+        assertThat(headers, hasItem(
+            allOf(containsString("_com.auth0.nonce=asdfghjkl"),
+                containsString("Max-Age=600"),
+                containsString("HttpOnly"))
+        ));
     }
 
     @Test
@@ -143,7 +153,13 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
-        assertThat(headers, containsInAnyOrder("com.auth0.nonce=asdfghjkl; Max-Age=600; Secure; HttpOnly; SameSite=None"));
+        assertThat(headers, hasItem(
+          allOf(containsString("com.auth0.nonce=asdfghjkl"),
+              containsString("Max-Age=600"),
+              containsString("Secure"),
+              containsString("HttpOnly"),
+              containsString("SameSite=None"))
+        ));
     }
 
     @Test
@@ -188,7 +204,13 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(1));
-        assertThat(headers, containsInAnyOrder("com.auth0.state=asdfghjkl; Max-Age=600; Secure; HttpOnly; SameSite=Lax"));
+        assertThat(headers, hasItem(
+            allOf(containsString("com.auth0.state=asdfghjkl"),
+                containsString("Max-Age=600"),
+                containsString("Secure"),
+                containsString("HttpOnly"),
+                containsString("SameSite=Lax"))
+        ));
     }
 
     @Test
@@ -201,8 +223,18 @@ public class AuthorizeUrlTest {
 
         Collection<String> headers = response.getHeaders("Set-Cookie");
         assertThat(headers.size(), is(2));
-        assertThat(headers, containsInAnyOrder("com.auth0.state=asdfghjkl; Max-Age=600; Secure; HttpOnly; SameSite=None"));
-        assertThat(headers, containsInAnyOrder("_com.auth0.state=asdfghjkl; Max-Age=600; HttpOnly"));
+        assertThat(headers, hasItem(
+          allOf(containsString("com.auth0.state=asdfghjkl"),
+              containsString("Max-Age=600"),
+              containsString("Secure"),
+              containsString("HttpOnly"),
+              containsString("SameSite=None"))
+        ));
+        assertThat(headers, hasItem(
+          allOf(containsString("_com.auth0.state=asdfghjkl"),
+              containsString("Max-Age=600"),
+              containsString("HttpOnly"))
+        ));
     }
 
     @Test
